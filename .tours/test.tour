@@ -1,0 +1,39 @@
+{
+  "id": "4b39869b-0499-4cdc-887c-029ff742dbf7",
+  "tourFile": "test.tour",
+  "title": "lab0-dev-notes",
+  "description": "A New Tour",
+  "createdAt": "2025-07-26 23:28:46",
+  "steps": [
+    {
+      "title": "webget.cc:23",
+      "description": "将 C 风格的命令行参数数组 (`argv`, `argc`)\n  包装成一个现代、更安全、更易于使用的 `std::span`\n  对象。\n\n  让我们分解一下：\n\n\n   1. `argv` 和 `argc`:\n       * main 函数接收两个传统的 C 风格参数：argc\n         (argument count)\n         是一个整数，表示命令行参数的数量；argv\n         (argument vector) 是一个指向 C 风格字符串\n         (char*) 的数组，存储着每个参数。\n       * 使用这种原始数组和大小的方式很容易出错，比\n         如传递了错误的计数值，或者在访问时超出数组\n         边界。\n\n\n   2. `std::span` (C++20):\n       * std::span 是 C++20\n         引入的一个非常有用的工具。它本身并不拥有数\n         据，而是提供了一个对连续内存块的“视图”\n         (view) 或 “句柄” (handle)。\n       * 它将一个指针和其对应的大小/长度捆绑在一起\n         ，形成一个单一的对象。\n       * 它提供了类似容器（如\n         std::vector）的接口，比如 .front()\n         (获取第一个元素), .size() (获取大小), []\n         (按下标访问) 等。\n\n\n   3. `auto args \u003d span( argv, argc );`:\n       * 这行代码创建了一个名为 args 的 std::span\n         对象。\n       * span “看”着 argv\n         指向的内存区域，并且知道这个区域里有 argc\n         个元素。\n       * auto 关键字会自动推断出 args 的类型是\n         std::span\u003cchar*\u003e.\n\n\n  这样做的好处是什么？\n\n\n   * 安全性: 将指针和大小绑定在一起，减少了因两者不\n     匹配而导致的 bug。\n   * 易用性: 你可以像使用 std::vector 一样使用 args\n     对象。在后续代码中，你可以看到 args.front()\n     被用来获取第一个参数（程序名），这比 argv[0]\n     更具可读性和现代感。\n   * 现代 C++ 风格: 这是现代 C++ 推荐的做法，用更安\n     全、更具表现力的抽象来取代原始指针和数组操作。",
+      "file": "webget.cc",
+      "line": 23
+    },
+    {
+      "title": "webget.cc:30",
+      "description": "先cmake --build build\n\n再执行测试cmake --build build --target check_webget",
+      "file": "webget.cc",
+      "line": 30
+    },
+    {
+      "title": "byte_stream.hh:28",
+      "description": "虽然 std::deque 在两端增删数据（push_back,\n  pop_front）的效率都是最高的（O(1)），但在这个\n  特定的 ByteStream 实现中，`std::string`\n  是一个更优的选择。\n\n  原因在于 Reader::peek() const 这个函数。\n\n  关键决策点：Reader::peek() const\n\n\n  这个函数被要求返回一个\n  std::string_view。std::string_view 的最大优点\n  是它可以“零拷贝”地引用一块连续的内存。\n\n\n   1. `std::string` 的优势：\n       * 内存连续：std::string\n         内部的数据存储是保证连续的。这使得我们可\n         以直接从它的内部缓冲区创建一个\n         std::string_view，这个操作的成本极低（O(\n         1)），几乎不耗费任何性能。\n       * `peek()` 实现：return {buffer_.data(),\n         buffer_.size()};\n         这样一行代码就高效地完成了。\n\n\n   2. `std::deque` 的劣势：\n       * 内存不连续：std::deque\n         为了实现高效的两端操作，其内部是由多个不\n         连续的内存块组成的。\n       * `peek()`\n         实现：因为内存不连续，你无法直接为整个\n         deque 创建一个\n         std::string_view。为了返回\n         string_view，你必须先创建一个新的\n         std::string，然后遍历 deque\n         把所有字符拷贝进去，最后再为这个新\n         string 创建一个 string_view。这个过程涉\n         及大量的拷贝和内存分配，完全违背了 peek\n         想要高效“偷看”的初衷。\n\n  性能权衡 (Trade-off)\n\n\n  | 数据结构 | push (写入数据到末尾) | pop\n  (从开头移除数据) | peek (查看整个缓冲区) |\n  | :--- | :--- | :--- | :--- |\n  | `std::string` | 高效 (摊还 O(1)) | 较慢\n  (O(N)) | 极快 (O(1), 零拷贝) |\n  | `std::deque` | 极快 (O(1)) | 极快 (O(1)) |\n  较慢 (O(N), 需拷贝) |\n\n  结论：\n\n\n  在这个场景下，我们做出了一个工程上的权衡：\n  我们愿意接受 pop() 操作（从字符串开头删除）的\n  O(N) 性能开销，来换取 peek() 操作的 O(1)\n  零拷贝性能优势。\n\n  在流处理中，能够高效地检查缓冲区内容 (peek)\n  往往比消耗它 (pop)\n  的极致性能更重要。因此，`std::string`\n  是实现这个 `ByteStream` API 的最佳数据结构。",
+      "file": "byte_stream.hh",
+      "line": 28
+    },
+    {
+      "title": "byte_stream.hh:16",
+      "description": "1. 在这个项目中，代码是如何工作的？(The\n  \"How\")\n\n  你看一下 ByteStream 类中的这两个函数：\n\n\n```cpp\n    // in class ByteStream\n    Reader\u0026 reader() { return *this; }\n    Writer\u0026 writer() { return *this; }\n```\n\n  这里的代码揭示了设计的真相：\n\n\n   * 没有创建新对象：当我们调用\n     my_byte_stream.reader() 时，它并没有用 new\n     Reader() 或者创建一个新的 Reader 栈对象。\n   * 返回自身引用：它返回的是 *this，也就是\n     my_byte_stream 这个对象本身的一个引用。\n   * 类型转换：因为 Reader 和 Writer 都继承自\n     ByteStream，所以一个 ByteStream\n     对象可以被“视作”一个 Reader 或一个\n     Writer。当 return *this; 时，C++\n     会进行一个隐式的类型转换，返回一个 Reader\u0026\n     或 Writer\u0026\n     类型的引用，但这引用指向的还是原来那个\n     ByteStream 对象。\n\n  把它们想象成一个物体的不同“侧面”或“接口”：\n\n\n   * 你创建了一个 ByteStream 对象，它包含了所有的\n     数据（缓冲区、计数器等）。\n   * 当你需要写入时，你调用 .writer()，它给你一个\n     “写入者”的视角（接口），让你只能调用 push,\n     close 等方法。\n   * 当你需要读取时，你调用 .reader()，它给你一个\n     “读取者”的视角（接口），让你只能调用 peek,\n     pop 等方法。\n\n\n  这两个视角操作的都是同一个底层 `ByteStream`\n  对象。这个设计强制保证了 Reader 和 Writer\n  是无状态的（stateless），所有的状态都保存在\n  ByteStream 基类中，非常干净。\n\n\n  2. 如果我们非要创建 Writer 对象会怎样？(The\n  \"What If\")\n\n  现在我们来回答你的原始问题：如果一个子类没有\n  构造函数，会发生什么？\n\n\n   1. 编译器会尝试生成默认构造函数：如果子类（比如\n      Writer）没有定义任何构造函数，C++ 编译器会尝\n      试为它自动生成一个公开的、无参数的默认构造函\n      数 Writer::Writer()。\n\n\n   2. 子类构造函数必须调用父类构造函数：在执行子类\n      的构造函数之前，必须先完成父类的构造。所以，\n      编译器生成的 Writer::Writer()\n      会尝试去调用父类 ByteStream\n      的无参数默认构造函数\n      ByteStream::ByteStream()。\n\n   3. 问题出现：请看 ByteStream 的定义，它没有无参\n      数的构造函数。它只有一个需要 uint64_t\n      capacity 参数的构造函数：\n\n\n   1     explicit ByteStream( uint64_t\n     capacity );\n\n      因为你已经定义了一个构造函数，编译器就不\n  会再为你生成默认的无参数构造函数了。\n\n  结论就是：你根本无法直接创建 `Writer` 或\n  `Reader` 对象！\n\n\n  如果你尝试在代码里写 Writer w; 或者 auto w \u003d\n  new Writer();，编译器会报错，错误信息会类似：\n  \u003e error: no matching function for call to\n  \u0027ByteStream::ByteStream()\u0027\n  \u003e note: candidate:\n  \u0027ByteStream::ByteStream(uint64_t)\u0027\n\n\n  这恰好是这个设计的精妙之处，它从语法层面就阻\n  止了你错误地创建无意义的、没有容量的 Reader\n  或 Writer 孤立对象。\n\n  ---\n\n  总结一下：\n\n\n   * 在这个项目中：我们不创建 Reader/Writer\n     对象，而是通过 reader()/writer() 方法获取对\n     ByteStream 对象本身的引用，并将其“视作”\n     Reader 或 Writer 来使用。\n   * 在C++通用规则中：如果子类没有构造函数，它会\n     尝试调用父类的无参数构造函数。因为\n     ByteStream 没有无参数构造函数，所以直接创建\n     Reader/Writer 会导致编译失败。",
+      "file": "byte_stream.hh",
+      "line": 16
+    },
+    {
+      "title": "byte_stream_helpers.cc:31",
+      "description": "1. static_assert 是什么？\n\n\n  它是一个编译指令，用于在代码编译阶段检查一个条\n  件是否为真。\n   * 如果条件为真\n     (true)：什么也不会发生，代码会正常继续编译。\n   * 如果条件为假 (false)：编译器会立即停止编译，\n     并显示你提供的错误信息。\n\n  这和我们平时用的 assert() 不同，assert()\n  是在程序运行时进行检查，而 static_assert\n  在程序能够成功编译之前就已经完成了它的工作。\n\n\n  2. sizeof( Reader ) \u003d\u003d sizeof( ByteStream )\n  是什么意思？\n\n\n  这是它检查的条件。\n   * sizeof(Reader)：计算一个 Reader\n     类型的对象在内存中占用的字节大小。\n   * sizeof(ByteStream)：计算一个 ByteStream\n     类型的对象在内存中占用的字节大小。\n   * \u003d\u003d：判断这两个大小是否完全相等。\n\n  3. 为什么要进行这个检查？\n\n  这揭示了项目作者一个非常重要的设计意图。\n\n\n  在 C++ 中，当一个子类（如 Reader）从父类（如\n  ByteStream）继承时，如果子类没有添加任何新的\n  成员变量，那么子类对象的大小通常就和父类对象\n  的大小是完全一样的。（注意：虚函数会增加一个\n  虚表指针的大小，但这里没有使用虚函数）。\n\n  所以，这行代码的真正含义是：\n\n\n  “我在此断言，`Reader` 类绝对不能有任何自己的\n  成员变量，它的大小必须和 `ByteStream`\n  完全一样！”\n\n  4. 这有什么用？\n\n\n  这是一种强制性的代码规范，用来保证设计的纯粹性。\n  作者的设计思想是：\n   * `ByteStream` 是状态的唯一拥有者：所有的数据\n     和状态（比如缓冲区、容量、已推送/已弹出字节\n     数、是否关闭等）都必须作为成员变量定义在\n     ByteStream 基类中。\n   * `Reader` 和 `Writer` 只是接口/视图：Reader 和\n      Writer 类不应该有自己的状态。它们只是操作\n     ByteStream 数据的两种不同“视角”或“接口”。",
+      "file": "byte_stream_helpers.cc",
+      "line": 31
+    }
+  ]
+}

@@ -1,0 +1,142 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "lab0-read-notes",
+  "steps": [
+    {
+      "file": "util/file_descriptor.hh",
+      "description": "好的，详细解释如下：\n\n### 什么是隐式转换？\n\n在 C++ 中，如果一个类有一个**单参数构造函数**（比如 `FDWrapper(int fd)`），编译器允许你用该参数类型的值**自动创建**该类的对象。这种自动创建对象的过程就叫**隐式转换**。\n\n#### 例子\n\n假设没有 `explicit`：\n\n```cpp\nclass FDWrapper {\npublic:\n    FDWrapper(int fd) { /* ... */ }\n};\n\nvoid foo(FDWrapper w) { /* ... */ }\n\nfoo(5); // 这里发生了隐式转换\n```\n\n上面这行 `foo(5);`，虽然 `foo` 需要一个 `FDWrapper` 类型的参数，但你传了一个 `int`。编译器会自动调用 `FDWrapper(int fd)` 构造函数，把 `5` 转成一个 `FDWrapper` 对象，然后传给 `foo`。这就是**隐式转换**。\n\n#### 可能带来的问题\n\n隐式转换有时会导致**意外的对象创建**，让代码变得难以理解和维护。例如：\n\n- 你本来只想传递一个整数，却不小心创建了一个临时对象。\n- 如果构造函数有副作用，可能会引发难以发现的 bug。\n\n#### `explicit` 的作用\n\n加上 `explicit` 后：\n\n```cpp\nclass FDWrapper {\npublic:\n    explicit FDWrapper(int fd) { /* ... */ }\n};\n\nvoid foo(FDWrapper w) { /* ... */ }\n\nfoo(5); // 编译错误！不允许隐式转换\nfoo(FDWrapper(5)); // OK，显式构造\n```\n\n此时，只有你**明确地**写出 `FDWrapper(5)`，编译器才允许你创建对象。这样可以避免意外的隐式转换，提高代码的安全性和可读性。\n\n---\n\n**总结：**  \n- 没有 `explicit` 时，`int` 可以自动转换为 `FDWrapper`，发生隐式转换。\n- 加了 `explicit`，只能显式构造，防止隐式转换带来的问题。",
+      "line": 24
+    },
+    {
+      "file": "util/file_descriptor.hh",
+      "description": "std::string_view（字符串视图）是 C++17 引入的一个轻量级对象，用来引用（而不是拥有）一段连续的字符序列。\n\n作用\n它不拷贝字符串内容，只是保存指向原始字符串的指针和长度。\n适合只读场景，效率高，避免了不必要的内存分配和拷贝。",
+      "line": 31
+    },
+    {
+      "file": "util/file_descriptor.hh",
+      "description": "成员函数后面加 `const`，表示**这个函数不会修改类的成员变量**（除了用 `mutable` 修饰的成员）。\n\n比如：\n\n```cpp\nT CheckSystemCall( std::string_view s_attempt, T return_value ) const;\n```\n\n这里的 `const` 表示：\n- 你可以用 `const` 对象调用这个函数。\n- 这个函数**保证不改变对象的状态**（不会修改成员变量）。\n\n这样做的好处：\n- 增强代码安全性和可读性。\n- 让编译器帮你检查意外的修改。\n\n**总结：**  \n成员函数加 `const`，就是承诺“我不会改对象的数据”。\n\n\n\n\n“你可以用 const 对象调用这个函数” 的意思是：\n\n如果你有一个 `const` 类型的对象，比如：\n\n```cpp\nconst FileDescriptor::FDWrapper fdw(5);\n```\n\n你**只能调用那些被声明为 `const` 的成员函数**，比如：\n\n```cpp\nfdw.CheckSystemCall(\"read\", 0); // 可以，因为 CheckSystemCall 带 const\n```\n\n如果成员函数没有加 `const`，那么用 `const` 对象是**不能调用**的，编译会报错。\n\n**总结：**  \n加了 `const` 的成员函数，可以被 `const` 对象安全调用，因为它保证不会修改对象内容。这样可以让你的代码更灵活、更安全。",
+      "line": 30
+    },
+    {
+      "file": "util/file_descriptor.hh",
+      "description": "这一行：\n\n```cpp\nFDWrapper( const FDWrapper& other ) = delete;\n```\n\n的意思是**禁止 FDWrapper 对象被拷贝构造**。\n\n也就是说，你不能这样写：\n\n```cpp\nFDWrapper a(5);\nFDWrapper b(a); // 编译错误！拷贝构造被禁用\n```\n\n这样做的原因通常是：  \nFDWrapper 管理着独占的资源（比如文件描述符），不允许多个对象同时管理同一个资源，防止资源重复释放或管理混乱。\n\n**总结：**  \n`= delete` 禁止拷贝，保证资源安全。",
+      "line": 34
+    },
+    {
+      "file": "util/file_descriptor.hh",
+      "description": "这一行：\n\n```cpp\nFDWrapper& operator=( const FDWrapper& other ) = delete;\n```\n\n的意思是**禁止 FDWrapper 对象之间的赋值操作**（拷贝赋值）。\n\n也就是说，下面这种写法会**编译报错**：\n\n```cpp\nFDWrapper a(5);\nFDWrapper b(6);\na = b; // 错误！赋值操作被禁用\n```\n\n这样做的原因通常是：  \nFDWrapper 管理着独占的资源（如文件描述符），不允许两个对象通过赋值操作共享或重复管理同一个资源，防止资源泄漏或重复释放。\n\n**总结：**  \n`= delete` 禁止拷贝赋值，保证资源安全和唯一性。",
+      "line": 35
+    },
+    {
+      "file": "util/file_descriptor.hh",
+      "description": "这一行：\n\n```cpp\nFDWrapper( FDWrapper&& other ) = delete;\n```\n\n的意思是**禁止 FDWrapper 对象的移动构造**。\n\n也就是说，下面这种写法会**编译报错**：\n\n```cpp\nFDWrapper a(5);\nFDWrapper b(std::move(a)); // 错误！移动构造被禁用\n```\n\n### 为什么要这样做？\n\nFDWrapper 管理着独占的系统资源（如文件描述符），如果允许移动构造，可能会导致资源管理混乱或重复释放。  \n通过 `= delete` 禁止移动构造，可以确保每个 FDWrapper 对象始终独占其资源，避免潜在的资源泄漏或错误。\n\n**总结：**  \n`= delete` 禁止移动构造，保证资源安全和唯一性。",
+      "line": 36
+    },
+    {
+      "file": "util/file_descriptor.hh",
+      "description": "这一行：\n\n```cpp\nFDWrapper& operator=( FDWrapper&& other ) = delete;\n```\n\n的意思是**禁止 FDWrapper 对象之间的移动赋值操作**。\n\n---\n\n### 详细解释\n\n- `FDWrapper& operator=( FDWrapper&& other )` 是**移动赋值运算符**，用于把一个右值（临时对象或即将销毁的对象）的资源“搬”到另一个对象里。\n- `= delete` 表示**禁用**这个操作，编译器遇到类似赋值时会报错。\n\n---\n\n### 为什么要禁用？\n\nFDWrapper 管理着独占的系统资源（如文件描述符），如果允许移动赋值，可能会导致资源管理混乱或重复释放。禁用移动赋值可以保证每个 FDWrapper 对象始终独占自己的资源，避免潜在的资源泄漏或错误。\n\n---\n\n### 总结\n\n这一行代码的作用是：**禁止 FDWrapper 对象之间的移动赋值，保证资源安全和唯一性。**",
+      "line": 37
+    },
+    {
+      "file": "util/file_descriptor.hh",
+      "description": "如果你不为你的类编写任何析构函数，C++\n  编译器会自动为你生成一个。这个“默认”的析构函数会做两件事：\n\n\n   1. 调用所有非静态成员变量的析构函数。\n   2. 调用其基类的析构函数（如果该类有基类的话）。\n   \n = default; 的作用就是明确地要求编译器执行上述的默认行为。\n\n\n  你可能会问：“如果我不写，编译器也会默认生成，那我为什么还要多此一举\n  写 = default; 呢？”\n\n  这有几个原因：\n\n\n   * 代码清晰性和意图表达：它清楚地向阅读代码的人表明：“我（作者）已经考\n     虑过这个类的析构过程了，并且我确定编译器生成的默认行为就足够了，不\n     需要任何特殊的清理逻辑。”\n     这比什么都不写要清晰得多，后者可能会让读者怀疑是不是作者忘记写了。\n\n\n   * 符合“零之法则” (The Rule of Zero)：这是一个现代 C++\n     的设计准则。它指出，如果一个类通过其成员变量（特别是像 std::string,\n     std::vector, std::shared_ptr 这样的资源管理类）来管理所有资源，那么\n     你通常不需要自己编写任何特殊的成员函数（析构函数、拷贝/移动构造函数\n     、拷贝/移动赋值运算符）。FileDescriptor 就是一个完美的例子。\n\n因此，当一个 FileDescriptor 对象被销毁时：\n\n\n   1. ~FileDescriptor() 被调用。\n   2. 因为它是 = default 的，所以它会去调用其成员 internal_fd_\n      的析构函数。\n   3. internal_fd_ (一个 shared_ptr)\n      的析构函数被调用，它会把引用计数减一。\n   4. 如果引用计数变为 0，shared_ptr 就会安全地删除它所管理的 FDWrapper\n      对象，从而调用 FDWrapper 的析构函数。\n   5. FDWrapper 的析构函数会调用 ::close(fd_)，最终关闭文件描述符。",
+      "line": 62
+    },
+    {
+      "file": "util/file_descriptor.cc",
+      "description": "iovecs.reserve( buffers.size() ); 这行代码是在 C++ 中对 std::vector\n  进行的一项重要的性能优化。\n\n  它的作用是预先分配内存，以避免在后续的循环中发生多次内存重新分配和数据\n  拷贝。\n\n\n  让我们来详细解释一下：\n\n  std::vector 的工作原理\n\n\n  std::vector 是一个动态数组。当你向其中添加元素时（例如使用 push_back\n  或 emplace_back），它会检查自己是否有足够的容量 (capacity)\n  来存放新元素。\n\n\n   * 容量 (Capacity)：vector\n     内部已经分配的、可以用来存放元素的总空间大小。\n   * 大小 (Size)：vector 中当前实际存储的元素数量。\n\n\n  如果 size 即将超过 capacity，vector 就必须重新分配内存：\n   1. 它会申请一块更大的新内存区域（通常是当前容量的 1.5 倍或 2 倍）。\n   2. 然后，它会把所有旧内存区域中的元素拷贝或移动到新内存区域。\n   3. 最后，释放旧的内存区域。\n\n  这个过程（特别是第 2 步的数据拷贝）是非常耗时的，尤其是在 vector\n  变得很大时。\n\n  reserve() 的作用\n\n  reserve() 函数就是为了解决这个问题。\n\n\n  iovecs.reserve( buffers.size() ); 这行代码告诉 iovecs 这个\n  vector：“我接下来准备要放入 buffers.size()\n  个元素，请你现在就一次性地把容量调整到至少这么大。”",
+      "line": 119
+    },
+    {
+      "file": "util/file_descriptor.hh",
+      "description": "这个函数执行一次“分散读取”（Scatter Read）操作。它允许你将数据从\n  文件描述符一次性地读入到多个缓冲区（一个 std::vector<std::string>\n  ）中。操作系统会按顺序填充这个向量里的每一个字符串，直到读完所有\n  请求的数据或到达文件末尾。这种方式通常比多次调用单缓冲区的 read\n  更高效，因为它只需要一次系统调用。",
+      "line": 66
+    },
+    {
+      "file": "util/file_descriptor.hh",
+      "description": "这个函数执行一次“聚集写入”（Gather\n  Write）操作。它接收一个由多个 std::string_view 组成的向量，然\n  后通过一次系统调用将这些分散在不同内存位置的数据块按顺序“聚集\n  ”起来，一并写入文件描述符。这比对每个数据块单独调用 write 要\n  高效得多，因为它极大地减少了用户空间和内核空间之间的切换开销\n  。",
+      "line": 71
+    },
+    {
+      "file": "util/file_descriptor.hh",
+      "description": "问题一：我们想做什么？\n\n  想象一下，你的程序里有很多 std::string\n  对象，它们可能在不同的地方：\n\n\n\n   1 std::string header = \"Content-Type: text/html\";\n   2 std::string body =\n     \"<html><body><h1>Hello</h1></body></html>\";\n   3 std::string footer = \"Signature: 12345\";\n\n\n  现在，你想把这三个字符串按顺序一次性地写入一个文件或网络连接\n  。\n\n  问题二：最直接的方法有什么问题？\n\n\n  你可能会想，我们可以把它们复制到一个新的\n  std::vector<std::string> 里，然后传递给 write 函数。\n\n\n\n   1 // 方法一：拷贝\n   2 std::vector<std::string> data_to_write;\n   3 data_to_write.push_back(header); // 在 vector\n     内部创建 header 的一个拷贝\n   4 data_to_write.push_back(body);   // 在 vector\n     内部创建 body 的一个拷贝\n   5 data_to_write.push_back(footer); // 在 vector\n     内部创建 footer 的一个拷贝\n   6\n   7 write(data_to_write); // 假设有这样一个 write 函数\n\n\n\n  这个方法的问题是：效率低。\n  std::string 对象内部管理着一块内存来存放字符串数据。当你把\n  header push_back 到 vector 中时，vector 会分配新的内存，并把\n  header 的内容（\"Content-Type: text/html\"）完整地拷贝一份过去\n  。如果这些字符串非常大（比如几兆的文件内容），这个拷贝操作会\n  非常耗时，并且会占用大量额外的内存。\n\n\n  我们想要的其实只是告诉 write 函数：“请去读取 header、body 和\n  footer 的内容”，而不是“请先完整地复制一遍 header、body 和\n  footer，然后再去读取这些复制品”。\n\n  问题三：为什么不能直接用引用 &？\n\n\n  一个很自然的想法是：“既然不想拷贝，那我用引用不就行了吗？”\n  就像这样：\n\n\n   1 // 这个在 C++ 中是【不合法】的！\n   2 std::vector<std::string&> refs = {header, body,\n     footer};\n\n\n\n  C++ 标准规定，容器（如 `std::vector`）不能直接存储引用\n  (`&`)。\n  简单来说，这是因为容器要求它所存储的元素是“可赋值的”（assigna\n  ble），而引用一旦被初始化后就不能再指向其他对象了，这与容器的\n  操作要求相冲突。\n\n\n  问题四：解决方案是什么？—— 引用包装类 Ref\n\n\n  既然不能直接把引用放进 vector，我们就用一个“小盒子”把引用包起\n  来。这个“小盒子”本身是一个可以被拷贝和赋值的对象，所以 vector\n   很乐意存储它。但是，“小盒子”的内部藏着我们真正想要的——对原始\n  字符串的引用（或者说，指针）。\n\n  这个“小盒子”就是所谓的引用包装类 (reference wrapper)。\n\n\n  在这个项目中，它被命名为 Ref。C++\n  标准库也提供了一个类似的东西，叫做 std::reference_wrapper。\n\n  所以，Ref<std::string>\n  就是这样一个“盒子”，它里面安全地保存着对一个 std::string\n  对象的引用。\n\n  现在我们可以这样做：\n\n\n\n   1 // 方法二：使用引用包装类（高效！）\n   2 std::vector<Ref<std::string>> refs;\n   3 refs.push_back(Ref(header)); //\n     创建一个“盒子”，里面装着对 header\n     的引用。没有拷贝字符串数据！\n   4 refs.push_back(Ref(body));   //\n     创建一个“盒子”，里面装着对 body 的引用。\n   5 refs.push_back(Ref(footer)); //\n     创建一个“盒子”，里面装着对 footer 的引用。\n   6\n   7 write(refs); // 调用我们正在讨论的那个 write 函数\n\n\n  这个过程完全没有发生字符串数据的拷贝。我们只是创建了几个非常\n  轻量级的“盒子”对象，这几乎不耗费任何时间和内存。",
+      "line": 72
+    },
+    {
+      "file": "util/socket.hh",
+      "description": "这是一个非常巧妙的 C++ 函数设计，它利用了高阶函数\n  (Higher-Order Function) 的思想来减少代码重复。\n\n\n  我们来深入分析它的作用和原理。\n\n  作用\n\n\n  这个 get_address 函数是一个私有的辅助函数 (private\n  helper function)。它的作用是抽象并统一获取两种不同地\n  址的逻辑：\n\n\n\n   1. 本地地址 (Local Address)：通过 getsockname()\n      系统调用获取。\n   2. 对端地址 (Peer Address)：通过 getpeername()\n      系统调用获取。\n\n  你看，在 public 接口中，有两个函数：\n\n\n   1 Address local_address() const;\n   2 Address peer_address() const;\n\n  这两个函数的功能非常相似，它们都需要调用一个底层的 C\n  函数来获取一个地址信息。get_address 的目的就是把它们之\n  间共同的逻辑提取出来，避免写两遍几乎一模一样的代码。\n\n  原理：如何用一个函数实现两种功能？\n\n  这里的核心技巧是第二个参数：\n  const std::function<int( int, sockaddr*, socklen_t*\n  )>& function\n\n\n   1. `std::function` 是什么？\n      std::function 是 C++ 标准库中的一个“多态函数包装器\n  ”。你可以把它想象成一个通用的函数指针或函数对象。它可\n  以存储、复制和调用任何可调用 (callable)\n  的目标——包括普通函数、函数指针、lambda 表达式、成员函\n  数等，只要它们的函数签名（参数类型和返回类型）匹配。\n\n\n\n   2. 这个 `std::function` 的签名是什么？\n      int( int, sockaddr*, socklen_t* )\n      这个签名精确地匹配了两个底层 C 语言 socket\n  函数的签名：\n       * int getsockname(int sockfd, struct sockaddr\n         *addr, socklen_t *addrlen);\n       * int getpeername(int sockfd, struct sockaddr\n         *addr, socklen_t *addrlen);\n\n\n   3. 如何使用？—— 高阶函数\n      get_address 函数本身不决定到底要调用 getsockname\n  还是\n  getpeername。它把这个决定权交给了调用者。调用者在调用\n  get_address 时，必须传入一个符合上述签名的具体函数。",
+      "line": 15
+    },
+    {
+      "file": "util/socket.hh",
+      "description": "1. domain (地址族 - Address Family)\n\n  这个参数指定了 socket\n  将要使用的通信域或协议族。它决定了 socket\n  能与哪种类型的地址进行通信。\n\n\n  可以把它理解为“你要和谁说话？” 是和互联网上的另一台电\n  脑说话，还是和本机上的另一个进程说话？\n\n  最常见的 domain 值有：\n\n\n   * `AF_INET`: 这是最常用的值，代表 IPv4\n     协议族。用于互联网上绝大多数的通信，例如 192.168.1.1\n     这样的地址。\n   * `AF_INET6`: 代表 IPv6\n     协议族。这是下一代互联网协议，地址更长，例如\n     2001:0db8:85a3:0000:0000:8a2e:0370:7334。\n   * `AF_UNIX` (或 AF_LOCAL): 代表本地 Unix 域套接字。它不\n     使用网络，而是通过文件系统中的一个特殊文件（socket\n     文件）来进行同一台机器上两个进程之间的通信。这种方式\n     非常高效，因为它不涉及网络协议栈。\n   * `AF_PACKET`: 用于底层的链路层通信。它允许你直接发送\n     和接收以太网帧等数据链路层的数据包，常用于网络嗅探和\n     包注入等特殊应用。\n\n\n  ---\n\n  2. type (套接字类型 - Socket Type)\n\n  这个参数指定了 socket\n  的通信语义，即数据是如何传输和组织的。\n\n\n  可以把它理解为“你要用什么方式说话？”\n  是像打电话一样建立稳定连接，还是一次性地寄一张明信片？\n\n  最常见的 type 值有：\n\n\n   * `SOCK_STREAM` (流式套接字):\n       * 特性: 提供面向连接的、可靠的、基于字节流的服务。\n       * 类比: 打电话。\n       * 保证:\n           * 可靠性:\n             数据保证送达，不会丢失或损坏（底层协议如 TCP\n             会处理重传和校验）。\n           * 有序性: 数据按发送顺序到达。\n           * 无边界: 数据像一条连续的河流（字节流），没有\n             消息边界。你发送两次 100\n             字节，接收方可能一次性收到 200 字节。\n       * 典型协议: TCP (Transmission Control\n         Protocol)。当你使用 AF_INET 和 SOCK_STREAM\n         时，你几乎总是在使用 TCP。\n\n\n   * `SOCK_DGRAM` (数据报套接字):\n       * 特性: 提供无连接的、不可靠的、基于消息的服务。\n       * 类比: 寄明信片。\n       * 不保证:\n           * 不可靠: 明信片可能会寄丢，也可能损坏。\n           * 无序性: 先寄的明信片不一定先到。\n           * 有边界: 每张明信片（数据报）都是一个独立单元\n             ，接收方一次就收到一张完整的明信片，不会把两\n             张拼在一起。\n\n       * 典型协议: UDP (User Datagram Protocol)。当你使用\n         AF_INET 和 SOCK_DGRAM 时，你几乎总是在使用 UDP。\n\n\n   * `SOCK_RAW` (原始套接字):\n       * 允许程序直接访问更底层的网络协议，比如直接构造和\n         发送 IP 包。需要管理员权限，常用于网络诊断工具如\n         ping 和 traceroute。\n\n  ---\n\n  3. protocol (具体协议)\n\n  这个参数通常用来在 domain 和 type\n  组合确定的协议中，进一步选择一个具体的协议。\n\n\n  在大多数情况下，domain 和 type\n  的组合已经唯一地确定了要使用的协议（例如 AF_INET +\n  SOCK_STREAM => TCP），所以这个参数可以被设置为\n  `0`，表示“使用系统默认的协议”。\n\n\n  只有在少数情况下，当一个 domain 和 type\n  的组合支持多种协议时，才需要明确指定\n  protocol。例如，你可以用原始套接字（SOCK_RAW）来发送\n  ICMP 或 IGMP 包，这时就需要通过 protocol 参数来指明。\n\n\n   * `IPPROTO_TCP`: TCP 协议。当 type 是 SOCK_STREAM\n     时，这是默认值。\n   * `IPPROTO_UDP`: UDP 协议。当 type 是 SOCK_DGRAM\n     时，这是默认值。\n   * `IPPROTO_ICMP`: ICMP 协议（用于 ping）。",
+      "line": 20
+    },
+    {
+      "file": "util/socket.hh",
+      "description": "getsockopt 是一个用于查询 (get) 套接字（socket）选项\n  (option) 的函数。它允许你获取一个 socket\n  内部各种状态和行为的参数值。\n\n\n  你可以把它想象成是你去查询一个对象的“属性”或“配置”。例\n  如，你想知道这个 socket 的发送缓冲区有多大，或者它是否\n  设置了“保持活动”（keep-alive）状态。\n\n\n  在 socket.hh 中，它被封装成一个模板函数：\n\n   1 template<typename option_type>\n   2 socklen_t getsockopt( int level, int option,\n     option_type& option_value ) const;\n\n  这个函数是对底层 C 语言 getsockopt(2)\n  系统调用的一个类型安全的 C++ 包装。\n\n  ---\n\n  getsockopt 的三个核心参数\n\n\n  这三个参数共同精确地指定了你想要查询哪一个选项。\n\n  1. level (级别)\n\n  这个参数指定了选项所属的协议层。因为网络协议是分层的（\n  应用层、传输层、网络层、链路层等），一个 socket\n  的选项可能属于不同的层次。\n\n\n   * `SOL_SOCKET`:\n     这是最常用的级别，表示选项是在通用套接字层 (Socket\n     Level)\n     定义的。这些选项不针对任何特定的协议，是所有类型\n     socket 通用的。例如，发送/接收缓冲区大小（SO_SNDBUF,\n     SO_RCVBUF）、广播许可（SO_BROADCAST）、地址重用（SO_R\n     EUSEADDR）等。\n\n\n   * `IPPROTO_IP`: 选项属于 IP 层 (IPv4)。例如，设置或获取\n     IP 包的 TTL（Time-To-Live，IP_TTL）或\n     Type-of-Service（IP_TOS）。\n\n   * `IPPROTO_IPV6`: 选项属于 IPv6 层。\n\n\n   * `IPPROTO_TCP`: 选项属于 TCP 层。例如，禁用 Nagle\n     算法（TCP_NODELAY）或启用 TCP\n     Keep-alive（TCP_KEEPIDLE）。\n\n  2. option (选项名称)\n\n\n  这个参数是在 level 指定的协议层内，你想要查询的具体选\n  项的名称。它通常是一个以 SO_, IP_, TCP_ 等开头的宏。\n\n  一些常见的例子：\n\n\n   * 在 SOL_SOCKET 级别下：\n       * SO_RCVBUF: 获取接收缓冲区的大小（字节）。\n       * SO_SNDBUF: 获取发送缓冲区的大小（字节）。\n       * SO_REUSEADDR: 查询是否允许地址重用（通常返回 0 或\n         1）。\n       * SO_ERROR: 获取待处理的 socket\n         错误。这是一个非常有用的选项，特别是在非阻塞\n         connect 中，可以用它来检查连接是否成功建立。\n       * SO_KEEPALIVE: 查询是否启用了 TCP keep-alive\n         功能。\n\n\n   * 在 IPPROTO_TCP 级别下：\n       * TCP_NODELAY: 查询是否禁用了 Nagle 算法。如果被禁\n         用，小的数据包会立即发送，而不是等待聚合成一个大\n         的再发送。这对于低延迟应用（如在线游戏）很重要。\n\n  3. option_value (用于接收选项值的变量)\n\n\n  这是一个输出参数。你提供一个变量的引用，getsockopt\n  函数会把查询到的选项值填充到这个变量里。",
+      "line": 27
+    },
+    {
+      "file": "util/socket.hh",
+      "description": "void bind( const Address& address );\n\n\n   * 作用: 绑定 socket 到一个具体的本地地址（IP\n     地址和端口号）。\n   * 类比: 给你新安装的电话插座分配一个电话号码。\n   * 何时使用: 主要用于服务器端。在服务器接受客户端连接之前\n     ，它必须首先通过 bind 告诉操作系统：“我这个 socket\n     专门负责监听 192.168.1.100 这个 IP 地址上的 8080 端口”\n     。之后，所有发送到这个地址和端口的数据都会被导向这个\n     socket。客户端通常不需要调用\n     bind，操作系统会自动为它们分配一个临时的端口号。\n   * 底层调用: bind(2)",
+      "line": 37
+    },
+    {
+      "file": "util/socket.hh",
+      "description": "void bind_to_device( std::string_view device_name );\n\n\n   * 作用: 将 socket\n     绑定到一个特定的网络接口（网卡）上，比如 \"eth0\" 或\n     \"wlan0\"。\n   * 类比: 规定你的电话只能通过客厅的那条电话线打出去，不\n     能用卧室的。\n   * 何时使用: 这是一个更特殊的功能。当你有一台拥有多个网\n     络接口（例如，一个有线网卡和一个无线网卡）的机器时，\n     你可以用这个函数强制让该 socket\n     的所有出站流量都通过指定的网络接口出去。这对于需要精\n     细控制网络流量路由的程序很有用。\n   * 底层调用: setsockopt with SO_BINDTODEVICE",
+      "line": 40
+    },
+    {
+      "file": "util/socket.hh",
+      "description": "void connect( const Address& address );\n\n\n   * 作用: 连接到一个远程的对端地址（服务器的 IP\n     地址和端口号）。\n   * 类比: 拿起电话，拨打对方的号码。\n   * 何时使用: 主要用于客户端。在客户端向服务器发送数据之前\n     ，它必须先调用 connect 来与服务器建立一个连接（对于\n     SOCK_STREAM/TCP 来说）或指定一个默认的通信目标（对于\n     SOCK_DGRAM/UDP\n     来说）。一旦连接成功，客户端就可以通过这个 socket\n     与服务器进行通信了。\n   * 底层调用: connect(2)",
+      "line": 43
+    },
+    {
+      "file": "util/socket.hh",
+      "description": "void shutdown( int how );\n\n\n   * 作用: 关闭一个连接的一部分。它比直接 close() 更精细。\n   * 类比:\n     在电话通话中，你可以选择只关掉你的麦克风（停止发送）\n     ，或者只关掉你的听筒（停止接收），或者两者都关。\n   * 何时使用: 用于需要精细控制连接关闭流程的场景。参数\n     how 可以是：\n       * SHUT_RD: 关闭读取方向。你不能再从这个 socket\n         接收数据了，但仍然可以发送。\n       * SHUT_WR: 关闭写入方向。你不能再向这个 socket\n         发送数据了。这通常被用作一个明确的“我说完了”的信\n         号给对方。\n       * SHUT_RDWR: 同时关闭读和写，效果等同于 close()。\n   * 底层调用: shutdown(2)",
+      "line": 46
+    },
+    {
+      "file": "util/socket.hh",
+      "description": "void set_reuseaddr();\n\n\n   * 作用: 设置 SO_REUSEADDR 套接字选项。这允许你的程序立\n     即重新绑定到一个刚刚被关闭的地址和端口上，而无需等待\n     操作系统默认的超时时间（通常是几分钟，称为 TIME_WAIT\n     状态）。\n   * 类比: 你的电话号码刚注销，这个选项允许你立即重新注册\n     同一个号码，而不是等系统清理完毕。\n   * 何时使用: 对于需要频繁重启的服务器程序来说极其重要。\n     如果没有这个选项，当你停止服务器再立即重启时，bind\n     调用会因为“地址已被使用” (Address already in use)\n     而失败，因为前一个进程的 socket 还处于 TIME_WAIT\n     状态。你应该在调用 bind 之前调用这个函数。\n   * 底层调用: setsockopt with SO_REUSEADDR",
+      "line": 54
+    },
+    {
+      "file": "util/socket.hh",
+      "description": "1. Socket (基类)\n\n\n   * 作用: 这是一个抽象基类，它封装了所有类型 socket\n     共有的功能。它本身不应该被直接实例化使用，而是作为其\n     他更具体的 socket 类的父类。\n   * 继承自: FileDescriptor，这意味着每个 Socket 对象本质\n     上也是一个文件描述符，拥有读写、关闭等基本能力。\n   * 提供的通用功能:\n       * bind(): 绑定地址。\n       * connect(): 连接到对端。\n       * shutdown(): 关闭连接。\n       * local_address() / peer_address():\n         获取本地/对端地址。\n       * getsockopt() / setsockopt(): 查询/设置 socket\n         选项。\n   * 构造函数: 它的构造函数是 protected 的，这再次强调了它\n     不能被外部直接创建，只能由其子类在构造时调用。",
+      "line": 11
+    },
+    {
+      "file": "util/socket.hh",
+      "description": "2. DatagramSocket (数据报套接字基类)\n\n\n   * 作用: 这是一个针对数据报 (datagram) 类型 socket\n     的基类。数据报 socket\n     的特点是“无连接的”和“基于消息的”（像寄明信片）。\n   * 继承自: Socket。它继承了 Socket 的所有通用功能。\n   * 新增的特定功能:\n       * sendto(destination, payload):\n         将一个数据报（payload）发送到一个明确指定的\n         destination 地址。这是数据报 socket 的典型用法。\n       * recv(source_address, payload): 接收一个数据报，并\n         同时获取发送方的地址（source_address）。\n       * send(payload): 如果这个数据报 socket 之前调用过\n         connect() 来指定一个默认目标，那么就可以用这个函\n         数来发送数据，而无需每次都提供目标地址。\n   * 谁继承它: UDPSocket, PacketSocket,\n     LocalDatagramSocket\n     都继承自它，因为它们都符合数据报的通信模式。",
+      "line": 60
+    },
+    {
+      "file": "util/socket.hh",
+      "description": "3. TCPSocket (TCP 套接字)\n\n\n   * 作用: 封装TCP (Transmission Control Protocol)\n     socket。这是最常用的 socket\n     类型之一，用于需要可靠、面向连接的通信，例如 HTTP (Web),\n     FTP, SSH 等。\n   * 继承自: Socket (注意，它直接继承自 Socket，而不是\n     DatagramSocket，因为它不符合数据报的模式)。\n   * 构造函数: 它的默认构造函数 TCPSocket()\n     会自动调用父类的构造函数 Socket(AF_INET,\n     SOCK_STREAM)，直接创建好一个标准的 IPv4 TCP socket。\n   * 新增的特定功能:\n       * listen(backlog): 将一个 TCP socket 标记为监听状态，\n         使其能够接受外来的连接请求。这是服务器端专用的。\n       * accept():\n         接受一个外来的连接请求。这个函数会返回一个新的\n         `TCPSocket` 对象，这个新 socket\n         专门用于与刚刚连接上的那个客户端通信。",
+      "line": 93
+    },
+    {
+      "file": "util/socket.hh",
+      "description": "4. UDPSocket (UDP 套接字)\n\n\n   * 作用: 封装UDP (User Datagram Protocol)\n     socket。用于需要快速、但不可靠的通信，例如 DNS\n     查询、在线游戏、视频流等。\n   * 继承自: DatagramSocket。\n   * 构造函数: 它的默认构造函数 UDPSocket()\n     会自动调用父类的构造函数 DatagramSocket(AF_INET,\n     SOCK_DGRAM)，创建好一个标准的 IPv4 UDP socket。\n   * 功能: 它直接使用 DatagramSocket 提供的 sendto() 和\n     recv() 等功能，没有新增自己的特定方法。它主要是一个“\n     具体化”的类，给用户提供一个明确的 UDP 接口。",
+      "line": 82
+    },
+    {
+      "file": "util/socket.hh",
+      "description": "5. PacketSocket (包套接字)\n\n\n   * 作用: 封装链路层包套接字 (Packet\n     Socket)。这是一种非常底层的 socket，允许程序直接在数\n     据链路层（如以太网）上发送和接收数据帧。\n   * 继承自: DatagramSocket，因为它也是基于包（帧）的，符\n     合数据报模式。\n   * 构造函数: PacketSocket(type, protocol)\n     需要用户明确指定链路层的协议类型，例如 ETH_P_IP\n     (只接收 IP 包) 或 ETH_P_ALL (接收所有类型的包)。\n   * 新增的特定功能:\n       * set_promiscuous(): 将底层的网络接口设置为混杂模式\n         (promiscuous mode)。在这种模式下，网卡会接收所有流\n         经它的网络包，而不仅仅是那些目的地是本机地址的包。\n         这是网络嗅探工具（如 Wireshark,\n         tcpdump）工作的基本原理。\n   * 使用场景:\n     网络监控、流量分析、自定义协议实现等高级网络编程。",
+      "line": 112
+    },
+    {
+      "file": "util/socket.hh",
+      "description": " 7. LocalDatagramSocket (本地数据报套接字)\n\n\n   * 作用: 封装Unix 域数据报套接字 (Unix Domain Datagram\n     Socket)。它提供和 UDPSocket 一样的不可靠、基于消息的\n     数据报服务，但通信范围也仅限于同一台机器内部。\n   * 继承自: DatagramSocket。\n   * 通信方式: 同样通过文件系统进行高效的进程间通信。\n   * 使用场景: 在本机进程间进行快速、基于消息的通信，例如\n     日志服务，一个进程快速地把日志消息“扔”给日志守护进程\n     ，不关心它是否一定收到。",
+      "line": 129
+    },
+    {
+      "file": "util/socket.hh",
+      "description": "6. LocalStreamSocket (本地流套接字)\n\n\n   * 作用: 封装Unix 域流套接字 (Unix Domain Stream\n     Socket)。它提供和 TCPSocket 一样的可靠、面向连接的流\n     式服务，但通信范围仅限于同一台机器内部的进程之间。\n   * 继承自: Socket。\n   * 通信方式: 它不使用网络协议栈，而是通过文件系统中的一\n     个特殊文件（socket 文件）进行通信，因此效率比 TCP\n     高得多。\n   * 构造函数: LocalStreamSocket(FileDescriptor&&\n     fd)，这个类似乎主要用于通过 accept\n     创建，或者需要手动创建文件描述符的场景。\n   * 使用场景:\n     需要在同一台机器上的不同进程间进行高性能、可靠通信的\n     场景，例如一个应用服务器和它本地的数据库代理之间。",
+      "line": 121
+    }
+  ],
+  "ref": "main"
+}
